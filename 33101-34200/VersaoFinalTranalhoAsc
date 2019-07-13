@@ -1,0 +1,372 @@
+.data
+
+
+Error_message: .ascii "Nome de ficheiro invalido"
+Filename_ask : .asciiz "introduza o nome do ficheiro"
+Temporary_String:.space 128
+File: .space 1024
+
+.text
+
+Main: 
+	la, $a0 , Filename_ask 		#loads $a0 whit Filename_ask string
+	jal Print			 #jumps to function that prints
+	nop
+	
+	jal Input 			#jumps to function that takes input
+	nop
+	
+	
+	#jal Print 
+	#nop
+	
+	jal OpenFile			#jumps to Open file
+	nop
+	
+	#jal Print 
+	#nop
+	
+	jal ReadFile			#jumps to Read file
+	nop
+	
+	jal ReadConfig			#jumps to ReadConfig
+	nop
+	
+	jal ReadDuration		#jumps to ReadDuration
+	nop
+	
+	jal ReadNotes			#jumps to ReadNotes
+	nop
+	
+	jal CloseFile			#jumps to CloseFile
+	nop
+	
+	jal Done			#jumps to Done
+	nop 	
+OpenFile:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	li $v0, 13			#syscall
+	la $a0, Temporary_String 
+	li $a1, 0
+	li $a2, 0
+	syscall
+	
+	move $s3 , $v0 			#file opened sucessfully. Store file descriptor
+	bltz $v0 , Erro 		#if files does not exist dysplay error message
+	
+	lw $ra,0($sp) 			#Restore the ra from the stack 
+	addi $sp,$sp,4			#Restore the stack size
+			
+	jr $ra				#Jumps to the function that called 
+	nop
+	
+ReadFile:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	li	$v0, 14			# Read File Syscall
+	move	$a0, $s3		# Load File Descriptor
+	la	$a1, File		# Load Buffer Address
+	li	$a2, 1024		# Buffer Size
+	syscall
+	#li	$v0, 4			# Print String Syscall
+	#la	$a0, File		# Load Contents String
+	#syscall
+	
+	lw $ra,0($sp) 			#Restore the ra from the stack 
+	addi $sp,$sp,4			#Restore the stack size
+			
+	jr $ra				#Jumps to the function that called 
+	nop
+	
+	
+ReadConfig:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	la $s1 , File 
+	lb $t1, 0($s1) 	# Load $t1 with the char on the address $a0
+	move $a2 $zero #cleans  $a2 
+	move $a1 $zero #cleans $a1
+	ReadInstrument:
+	
+		lb $t1, ($s1) 		#load $s1 whit char 
+		li $t2, 32		#load $t2 with the ascii code of the spacebar 
+		beq $t1, $t2 EndloopInst
+		nop
+		sub $t1 , $t1 48	#changes from string to int
+		add $a2 , $a2 , $t1	#adds number to $a2
+		mul $a2, $a2, 10
+		
+	
+
+		addi $s1 , $s1 , 1 	#to read next byte 
+		j ReadInstrument
+		nop
+	
+	
+		EndloopInst:
+			div $a2 , $a2, 10
+			lw $ra,0($sp) 			#Restore the ra from the stack 
+			addi $sp,$sp,4			#Restore the stack size
+			
+			jr $ra		#Jumps to the function that called 
+			nop			
+ReadDuration:
+
+		addi $sp, $sp, -4
+		sw $ra, 0($sp)
+		
+		
+		lb $t1, ($s1) 		#load $s1 whit char 
+		beq $t1, ' ' Skip
+		nop
+		beq $t1,'\n' Skip
+		nop
+		li $t3, 58   #loads $t3 whit ascii code for A
+		bge  $t1 , $t3 EndloopDura
+		nop
+		sub $t1 , $t1 48	#changes from string to int
+		add $a1 , $a1 , $t1	#adds number to $a1
+		mul $a1, $a1, 10
+		
+	
+
+		addi $s1 , $s1 , 1 	#to read next byte 
+		j ReadDuration
+		nop
+		
+			
+		EndloopDura:
+			div $a1 , $a1, 10	
+			move $t4 , $a1			#makes copy of duration
+			move $a1 $zero 			#cleans $a1
+			addi $t5 , $t5 ,1 		#contour to only play note when it gets to the next one
+	
+			lw $ra,0($sp) 			#Restore the ra from the stack 
+			addi $sp,$sp,4			#Restore the stack size
+			
+			jr $ra		#Jumps to the function that called 
+			nop	
+	
+		Skip:
+			addi $s1 , $s1 , 1
+			j ReadDuration
+			nop
+ReadNotes:	
+	
+		addi $sp, $sp, -4
+		sw $ra, 0($sp)	
+		
+		lb $t1, ($s1) 		#load $s1 whit char 
+		beq $t1, 'A' A		#if char in $t1 = A jump to A function
+		nop
+		beq $t1, 'C' C
+		nop
+		beq $t1, 'D' D
+		nop
+		beq $t1, 'E' E
+		nop
+		beq $t1, 'F' F
+		nop
+		beq $t1, 'G' G
+		nop
+		beq $t1, 'B' B
+		nop
+		beq $t1, '-' ExtraDuration
+		nop
+		beq $t1 '#' Sustenido
+		nop
+		beq $t1 'b'Bemol
+		nop
+		beq $t1 '\0' EndMusic
+		nop 
+		addi $s1, $s1 , 1 
+		j ReadNotes 
+		nop
+		
+		A:	
+			beq $t5 , 2  PlayNote	#if $t2 = 5 jump to Play note
+			nop
+			addi $t5, $t5 , 1 
+			addi $t1 , $t1 ,4 
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+			
+		
+		B:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1 
+			addi $t1 , $t1 ,5
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+		
+		C:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1  	#counter for when to play note
+			subi $t1 , $t1 ,7	#changes from string to note
+			addi $s1, $s1 , 1 	#to read next byte 
+			move $t6, $t1 		#moves note to $t6
+			j ReadNotes 
+			nop
+			
+		D:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1 
+			subi $t1 , $t1 ,6
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+			
+		E:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1 
+			subi $t1 , $t1 ,5
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+			
+		F:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1 
+			subi $t1 , $t1 ,5
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+			
+		G:	
+			beq $t5 , 2  PlayNote
+			nop
+			addi $t5, $t5 , 1 
+			subi $t1 , $t1 ,4
+			addi $s1, $s1 , 1 
+			move $t6, $t1 
+			j ReadNotes 
+			nop
+			
+		
+		ExtraDuration:
+		
+			add $a1, $a1, $t4 
+			addi $s1, $s1 , 1 
+			j ReadNotes
+			nop
+			
+		Sustenido:
+			addi $t6 , $t6 1 
+			addi $s1, $s1 , 1 
+			j ReadNotes
+			nop
+			
+			
+		Bemol:  
+			subi $t6, $t6, 1
+			addi $s1, $s1, 1
+			j ReadNotes
+			nop
+			
+		PlayNote:
+			move $a0 , $t6 
+			li $a3, 100   		 # volume = 100 (max 127)
+			li $v0, 33    		 # syscall para MIDI out sincrono
+			syscall       		 # TOCA!!
+			move $a1 , $zero	 # clean a1
+			subi $t5 , $t5 1 
+			j ReadNotes
+			nop
+		EndMusic:
+			move $a0 , $t6 
+			li $a3, 100   		 # volume = 100 (max 127)
+			li $v0, 33    		 # syscall para MIDI out sincrono
+			syscall       		 # TOCA!!
+			lw $ra,0($sp) 			#Restore the ra from the stack 
+			addi $sp,$sp,4			#Restore the stack size
+			
+			jr $ra				#Jumps to the function that called 
+			nop
+		
+						
+CloseFile:
+	addi $sp, $sp , -4
+	sw $ra, 0($sp)
+	
+	li	$v0, 16			# Close File Syscall
+	move	$a0, $s6		# Load File Descriptor
+	syscall
+	
+	lw $ra,0($sp) 			#Restore the ra from the stack 
+	addi $sp,$sp,4			#Restore the stack size
+			
+	jal	Done			# Goto End	
+	nop
+Print: 
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	li $v0 , 4
+	syscall 
+		
+	lw $ra,0($sp) 			#Restore the ra from the stack 
+	addi $sp,$sp,4			#Restore the stack size
+			
+	jr $ra				#Jumps to the function that called 
+	nop
+	
+Input: 
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	la $a0, Temporary_String		#Loads $a0 with the address of the char of the label "Temp_String"
+	li $a1,128			#Loads $a1 with the number max of char to read
+	li $v0,8			#Load to $v0 the number of the function (input)
+	syscall				#Call to the system
+	
+	DeleteNextLine:
+		
+		lb $t0, 0($a0)		#Load $t0 with char of the address $a0
+		beq $t0,'\n',delete_end	#If $t0 igual to '\n' sets ra to the address of the label "delete_end"
+		nop
+		addi $a0,$a0,1		#Increments address
+		j DeleteNextLine	#Jump to the label "delete_nextLine"
+		nop
+		
+		delete_end:
+			
+			sb $zero, 0($a0)#Loads to the address ($a0), zero
+	
+	lw $ra,0($sp) 	#Restore the ra from the stack 
+	addi $sp,$sp,4	#Restore the stack size
+	
+	jr $ra		#Jumps to the function that called 
+	nop
+	
+Erro:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	la $a0, Error_message		#Loas $a0 whit the Error_message string
+	jal Print
+	nop 
+	
+
+	
+Done:
+	
+	li	$v0, 10		# Exit Syscall
+	syscall
+	nop
+	
